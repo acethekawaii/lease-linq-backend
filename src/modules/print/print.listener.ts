@@ -16,7 +16,7 @@ export class PrintingListener {
         companyName: 'Richmond Jollyland Corp.',
         companyAddress: '1722 Juan Luna St. Tondo, Manila',
         vehicleType: session.vehicleType,
-        vehicleModel: session.vehicleModel,
+        vehicleModel: session.vehicleModel,                                                                                                                                                                                                                                                                                                                               
         plateNumber: session.plateNumber,
         date: formatTime(new Date()),
         enteredAt: formatTime(session.enteredAt),

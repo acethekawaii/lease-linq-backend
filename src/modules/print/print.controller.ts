@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, UseFilters } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, UseFilters } from '@nestjs/common';
 import { PrintService } from './print.service';
 import { PrintExitReceiptDTO } from './dto/print.dto';
 import { PrinterExceptionFilter } from 'src/common/filters/printer-exception.filter';
@@ -25,6 +25,20 @@ export class PrintController {
     @Body() printExitReceiptDTO: PrintExitReceiptDTO
   ) {
     return this.printService.printExitReceipt(printExitReceiptDTO);
+  }
+
+  @Post('retry/exit/:sessionId')
+  async retryExitPrint(
+    @Param('sessionId') sessionId: string
+  ) {
+    return this.printService.retryExitReceipt(sessionId);
+  }
+
+  @Post('retry/entry/:sessionId')
+  async retryEntryPrint(
+    @Param('sessionId') sessionId: string
+  ) {
+    return this.printService.retryEntryReceipt(sessionId);
   }
 
   @Get('health')
