@@ -8,6 +8,5 @@ export class PaginatedParkingSessions {
   data: ParkingSession[];
 
   @Field(() => PaginationMeta)
- 
   meta: PaginationMeta;
 }

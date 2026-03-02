@@ -51,6 +51,9 @@ model ParkingSessions {
   parkingFee         Float?            @map("parking_fee")
   occuranceDate      String            @map("occurance_date")
   includeInBIRReport Boolean           @map("include_in_bir_report") @default(false)
+  rateType           RateType         @map("rate_type") @default(HOURLY)
+  monthlyStart       DateTime?         @map("monthly_start")
+  monthlyEnd         DateTime?         @map("monthly_end")
 
   organizationId     String            @map("organization_id")
   organization       Organizations     @relation(fields: [organizationId], references: [id])
@@ -82,4 +85,10 @@ enum DiscountType {
   NONE
   PWD_SENIOR
   DELIVERY_VEHICLE
+}
+
+enum RateType {
+  HOURLY
+  OVERNIGHT
+  MONTHLY
 }

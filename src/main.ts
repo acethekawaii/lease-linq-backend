@@ -10,7 +10,8 @@ async function bootstrap() {
     origin: [
       'http://localhost:4200',
       'http://192.168.5.53:4200',
-      'http://10.196.126.117:4200',
+      'http://192.168.1.79:4200',
+      'http://10.196.126.11 7:4200',
       'https://paradise-parking-system.vercel.app',
       'https://www.paradise-parking-system.com'
     ],

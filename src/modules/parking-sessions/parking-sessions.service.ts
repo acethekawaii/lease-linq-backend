@@ -10,10 +10,14 @@ import { GetParkingStatistics } from './args/get-parking-statistics.args';
 import { GetVehicleStatsArgs } from './args/get-vehicle-type.args';
 import { VehicleStats } from './types/vehicle-stats.type';
 import { Prisma } from 'generated/prisma/client';
+import { ParkingBillingService } from './parking-billing.service';
 
 @Injectable()
 export class ParkingSessionsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private parkingBillingService: ParkingBillingService,
+  ) {}
 
   async getAllParkingSessions(args: ParkingSessionsArgs): Promise<PaginatedParkingSessions>  {
     const { page = 1, limit = 10 } = args;
@@ -60,6 +64,7 @@ export class ParkingSessionsService {
         organizationId: "9ed47d8e-f82d-4016-a770-fc3c93563762",
         vehicleType: input.vehicleType,
         plateNumber: input.plateNumber,
+        rateType: input.rateType,
         enteredAt: new Date(),
         occuranceDate,
         // discountType: input.discountType,
@@ -141,14 +146,12 @@ export class ParkingSessionsService {
       (exitedAt.getTime() - session.enteredAt.getTime()) / 60000
     );
 
-    const RATE_PER_HOUR = {
-      [VehicleType.CAR]: 25,
-      [VehicleType.MOTORCYCLE]: 20,
-      [VehicleType.TRUCK]: 100,
-    } as const
-    const ratePerHour = RATE_PER_HOUR[session.vehicleType];
-    const hours = Math.ceil(durationMinutes / 60);
-    const parkingFee = ratePerHour * hours;
+    const parkingFee = this.parkingBillingService.calculateFee(
+      session.rateType,
+      session.vehicleType,
+      session.enteredAt,
+      exitedAt,
+    )
 
     return this.prisma.parkingSessions.update({
       where: { id },

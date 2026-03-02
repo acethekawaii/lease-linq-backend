@@ -1,9 +1,7 @@
 import { Field, Float, Int, ObjectType } from '@nestjs/graphql';
 import { registerEnumType } from '@nestjs/graphql';
 
-import { VehicleType } from 'generated/prisma/enums';
-import { ParkingState } from 'generated/prisma/enums';
-import { PaymentStatus } from 'generated/prisma/enums';
+import { RateType, VehicleType, ParkingState, PaymentStatus } from 'generated/prisma/enums';
 
 registerEnumType(VehicleType, {
   name: 'VehicleType'
@@ -15,6 +13,10 @@ registerEnumType(ParkingState, {
 
 registerEnumType(PaymentStatus, {
   name: 'PaymentStatus'
+});
+
+registerEnumType(RateType, {
+  name: 'RateType',
 });
 
 @ObjectType()
@@ -42,6 +44,9 @@ export class ParkingSession {
 
   @Field(() => Int, { nullable: true })
   parkingCredits?: number | null;
+
+  @Field(() => RateType, { defaultValue: RateType.HOURLY })
+  rateType: RateType;
 
   @Field(() => Float, { nullable: true })
   parkingFee?: number | null;

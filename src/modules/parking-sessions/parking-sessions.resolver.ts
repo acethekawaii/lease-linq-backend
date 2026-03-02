@@ -26,7 +26,7 @@ export class ParkingSessionsResolver {
     return this.parkingSessionsService.getAllParkingSessions(args);
   }
 
-  @Mutation(() => ParkingSession, { name: 'createParkingSession' })
+  @Mutation(() => ParkingSession, { name: 'CreateParkingSession' })
   async createParkingSession(
     @Args('input') input: CreateParkingSessionInput
   ) {
