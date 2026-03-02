@@ -43,15 +43,15 @@ model ParkingSessions {
   durationMinutes    Int?              @map("duration_minutes")
   parkingState       ParkingState      @map("parking_state") @default(ACTIVE)
   paymentStatus      PaymentStatus     @map("payment_status") @default(UNPAID)
+  occuranceDate      String            @map("occurance_date")
   guardRemarks       String?           @map("guard_remarks")
   discountType       DiscountType      @map("discount_type") @default(NONE)
   discountHolderName String?           @map("discount_holder_name")
   discountIdNumber   String?           @map("discount_id_number")
   discountAmount     Float?            @map("discount_amount")
   parkingFee         Float?            @map("parking_fee")
-  occuranceDate      String            @map("occurance_date")
   includeInBIRReport Boolean           @map("include_in_bir_report") @default(false)
-  rateType           RateType         @map("rate_type") @default(HOURLY)
+  rateType           RateType          @map("rate_type") @default(HOURLY)
   monthlyStart       DateTime?         @map("monthly_start")
   monthlyEnd         DateTime?         @map("monthly_end")
 
@@ -72,7 +72,9 @@ enum VehicleType {
 
 enum ParkingState {
   ACTIVE
+  INACTIVE
   EXITED
+  CANCELLED
 }
 
 enum PaymentStatus {

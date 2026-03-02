@@ -11,6 +11,8 @@ import { GetVehicleStatsArgs } from './args/get-vehicle-type.args';
 import { VehicleStats } from './types/vehicle-stats.type';
 import { Prisma } from 'generated/prisma/client';
 import { ParkingBillingService } from './parking-billing.service';
+import { CreateMonthlySessionInput } from './input/create-monthly-session.input';
+import { GetMonthlySessionsArgs } from './args/get-monthly-sessions.args';
 
 @Injectable()
 export class ParkingSessionsService {
@@ -56,7 +58,6 @@ export class ParkingSessionsService {
     });
 
     const currentDate = new Date();
-
     const occuranceDate = formatter.format(currentDate); 
 
     const newSession = await this.prisma.parkingSessions.create({
@@ -74,6 +75,65 @@ export class ParkingSessionsService {
     });
 
     return newSession;
+  }
+
+  async createMonthlySession(input: CreateMonthlySessionInput) {
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Manila',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+
+    const currentDate = new Date();
+    const occuranceDate = formatter.format(currentDate); 
+
+    const newSession = await this.prisma.parkingSessions.create({
+      data: {
+        organizationId: "9ed47d8e-f82d-4016-a770-fc3c93563762",
+        vehicleType: input.vehicleType,
+        plateNumber: input.plateNumber,
+        rateType: input.rateType,
+        monthlyStart: input.monthlyStart,
+        monthlyEnd: input.monthlyEnd,
+        enteredAt: new Date(),
+        paymentStatus: 'PAID',
+        occuranceDate,
+      },
+    });
+
+    return newSession;
+  }
+
+  async getMonthlySessions(args: GetMonthlySessionsArgs): Promise<PaginatedParkingSessions> {
+    const { page = 1, limit = 10, rateType = "MONTHLY" } = args;
+    const skip = (page - 1) * limit;
+    
+    const [data, total] = await Promise.all([
+      this.prisma.parkingSessions.findMany({
+        where: {
+          rateType: rateType,
+        },
+        take: limit,
+        skip: skip,
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.parkingSessions.count(),
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1,
+      }
+    };
   }
 
   async getParkingSessionsByParkingState(args: GetParkingSessionsByParkingStateArgs): Promise<PaginatedParkingSessions> {

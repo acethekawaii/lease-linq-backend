@@ -11,6 +11,8 @@ import { ParkingStatistics } from './types/parking-statistics.type';
 import { GetParkingStatistics } from './args/get-parking-statistics.args';
 import { VehicleStats } from './types/vehicle-stats.type';
 import { GetVehicleStatsArgs } from './args/get-vehicle-type.args';
+import { CreateMonthlySessionInput } from './input/create-monthly-session.input';
+import { GetMonthlySessionsArgs } from './args/get-monthly-sessions.args';
 
 @Resolver()
 export class ParkingSessionsResolver {
@@ -26,7 +28,7 @@ export class ParkingSessionsResolver {
     return this.parkingSessionsService.getAllParkingSessions(args);
   }
 
-  @Mutation(() => ParkingSession, { name: 'CreateParkingSession' })
+  @Mutation(() => ParkingSession, { name: 'createParkingSession' })
   async createParkingSession(
     @Args('input') input: CreateParkingSessionInput
   ) {
@@ -35,6 +37,22 @@ export class ParkingSessionsResolver {
     this.eventEmitter.emit('parking.created', session);
 
     return session;
+  }
+
+  @Mutation(() => ParkingSession, { name: 'createMonthlySession' })
+  async createMonthlySession(
+    @Args('input') input: CreateMonthlySessionInput
+  ) {
+    const session = await this.parkingSessionsService.createMonthlySession(input);
+
+    return session;
+  }
+
+  @Query(() => PaginatedParkingSessions, { name: 'monthlySessions' })
+  async getMonthlySessions(
+    @Args() args: GetMonthlySessionsArgs,
+  ): Promise<PaginatedParkingSessions> {
+    return this.parkingSessionsService.getMonthlySessions(args);
   }
 
   @Query(()=> PaginatedParkingSessions, { name: 'parkingSessionsByParkingState' })

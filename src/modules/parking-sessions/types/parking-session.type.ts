@@ -48,6 +48,12 @@ export class ParkingSession {
   @Field(() => RateType, { defaultValue: RateType.HOURLY })
   rateType: RateType;
 
+  @Field(() => Date, { nullable: true })
+  monthlyStart?: Date | null;
+
+  @Field(() => Date, { nullable: true })
+  monthlyEnd?: Date | null;
+
   @Field(() => Float, { nullable: true })
   parkingFee?: number | null;
 
