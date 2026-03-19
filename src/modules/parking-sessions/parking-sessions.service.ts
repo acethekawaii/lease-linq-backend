@@ -85,8 +85,13 @@ export class ParkingSessionsService {
       day: '2-digit',
     });
 
-    const currentDate = new Date();
-    const occuranceDate = formatter.format(currentDate); 
+    // Use the monthly start date as the session's occurance date.
+    const occuranceDate = formatter.format(input.monthlyStart);
+
+    const MONTHLY_RATE = {
+      [VehicleType.CAR]: 6000,
+      [VehicleType.MOTORCYCLE]: 3000,
+    };
 
     const newSession = await this.prisma.parkingSessions.create({
       data: {
@@ -98,6 +103,7 @@ export class ParkingSessionsService {
         monthlyEnd: input.monthlyEnd,
         enteredAt: new Date(),
         paymentStatus: 'PAID',
+        parkingFee: MONTHLY_RATE[input.vehicleType],
         occuranceDate,
       },
     });
@@ -144,8 +150,11 @@ export class ParkingSessionsService {
 
     const where: Prisma.ParkingSessionsWhereInput = {
       parkingState: parkingState,
-      occuranceDate: occuranceDate,
     };
+
+    if (date) {
+      where.occuranceDate = date;
+    }
 
     if (includeInBIRReport !== undefined) {
       where.includeInBIRReport = includeInBIRReport;
