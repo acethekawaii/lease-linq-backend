@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { PrismaService } from 'src/shared/database/prisma.service';
 import { ParkingSessionsArgs } from './args/parking-sessions.args';
 import { CreateParkingSessionInput } from './input/create-parking-session.input';
-import { ParkingState, VehicleType } from 'generated/prisma/enums';
+import { ParkingState, RateType, VehicleType } from 'generated/prisma/enums';
 import { GetParkingSessionsByParkingStateArgs } from './args/get-parking-sessions-by-parking-state.args';
 import { PaginatedParkingSessions } from './types/paginated-parking-session.type';
 import { ParkingStatistics } from './types/parking-statistics.type';
@@ -150,6 +150,7 @@ export class ParkingSessionsService {
 
     const where: Prisma.ParkingSessionsWhereInput = {
       parkingState: parkingState,
+      rateType: { not: RateType.MONTHLY },
     };
 
     if (date) {
@@ -165,13 +166,9 @@ export class ParkingSessionsService {
         where,
         // take: limit,
         // skip: skip,
-        orderBy: { exitedAt: 'asc' }
+        orderBy: { enteredAt: 'desc' }
       }),
-      this.prisma.parkingSessions.count({
-        where: {
-          parkingState: parkingState,
-        },
-      }),
+      this.prisma.parkingSessions.count({ where }),
     ]);
 
     const totalPages = Math.ceil(total / limit);
