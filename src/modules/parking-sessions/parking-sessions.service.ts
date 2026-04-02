@@ -13,6 +13,8 @@ import { Prisma } from 'generated/prisma/client';
 import { ParkingBillingService } from './parking-billing.service';
 import { CreateMonthlySessionInput } from './input/create-monthly-session.input';
 import { GetMonthlySessionsArgs } from './args/get-monthly-sessions.args';
+import { GetMonthlyTransactionsArgs } from './args/get-monthly-transactions.args';
+import { ParkingSession } from './types/parking-session.type';
 
 @Injectable()
 export class ParkingSessionsService {
@@ -339,5 +341,40 @@ export class ParkingSessionsService {
         includeInBIRReport: true,
       },
     })
+  }
+
+  async getMonthlyTransactions(args: GetMonthlyTransactionsArgs): Promise<ParkingSession[]> {
+    const { year, month, parkingState, rateType, includeInBIRReport } = args;
+    const monthStr = String(month).padStart(2, '0');
+    const startDate = `${year}-${monthStr}-01`;
+
+    const nextMonth = month === 12 ? 1 : month + 1;
+    const nextYear = month === 12 ? year + 1 : year;
+    const nextMonthStr = String(nextMonth).padStart(2, '0');
+    const endDate = `${nextYear}-${nextMonthStr}-01`;
+
+    const where: Prisma.ParkingSessionsWhereInput = {
+      occuranceDate: {
+        gte: startDate,
+        lt: endDate,
+      },
+    };
+
+    if (parkingState) {
+      where.parkingState = parkingState;
+    }
+
+    if (rateType) {
+      where.rateType = rateType;
+    }
+
+    if (includeInBIRReport !== undefined) {
+      where.includeInBIRReport = includeInBIRReport;
+    }
+
+    return this.prisma.parkingSessions.findMany({
+      where,
+      orderBy: { occuranceDate: 'desc' },
+    });
   }
 }

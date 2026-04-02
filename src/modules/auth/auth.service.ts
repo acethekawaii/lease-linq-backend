@@ -3,7 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 
 import { UsersService } from '../users/users.service';
 import { LoginDTO } from './dto/login.dto';
-import { Role } from './constants/roles.enum';
+import { Role } from './constants/role.enum';
 
 type SignInData = { 
   id: number, 

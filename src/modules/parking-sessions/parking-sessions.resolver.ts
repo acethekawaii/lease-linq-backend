@@ -13,6 +13,7 @@ import { VehicleStats } from './types/vehicle-stats.type';
 import { GetVehicleStatsArgs } from './args/get-vehicle-type.args';
 import { CreateMonthlySessionInput } from './input/create-monthly-session.input';
 import { GetMonthlySessionsArgs } from './args/get-monthly-sessions.args';
+import { GetMonthlyTransactionsArgs } from './args/get-monthly-transactions.args';
 
 @Resolver()
 export class ParkingSessionsResolver {
@@ -78,6 +79,13 @@ export class ParkingSessionsResolver {
     @Args() args: GetParkingStatistics
   ): Promise<ParkingStatistics> {
     return this.parkingSessionsService.getParkingStatistics(args);
+  }
+
+  @Query(() => [ParkingSession], { name: 'monthlyTransactions' })
+  async getMonthlyTransactions(
+    @Args() args: GetMonthlyTransactionsArgs,
+  ): Promise<ParkingSession[]> {
+    return this.parkingSessionsService.getMonthlyTransactions(args);
   }
 
   @Query(() => [VehicleStats], { name: 'vehicleStats' })
