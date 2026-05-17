@@ -14,7 +14,9 @@ import { ParkingBillingService } from './parking-billing.service';
 import { CreateMonthlySessionInput } from './input/create-monthly-session.input';
 import { GetMonthlySessionsArgs } from './args/get-monthly-sessions.args';
 import { GetMonthlyTransactionsArgs } from './args/get-monthly-transactions.args';
+import { GetMonthlySubscriptionAnalyticsArgs } from './args/get-monthly-subscription-analytics.args';
 import { ParkingSession } from './types/parking-session.type';
+import { MonthlySubscriptionAnalytics, MonthlySubscriptionTrendPoint } from './types/monthly-subscription-analytics.type';
 
 @Injectable()
 export class ParkingSessionsService {
@@ -114,19 +116,64 @@ export class ParkingSessionsService {
   }
 
   async getMonthlySessions(args: GetMonthlySessionsArgs): Promise<PaginatedParkingSessions> {
-    const { page = 1, limit = 10, rateType = "MONTHLY" } = args;
+    const {
+      page = 1,
+      limit = 10,
+      rateType = RateType.MONTHLY,
+      search,
+      vehicleType,
+      subscriptionStatus,
+      referenceDate,
+      expiringWindowDays = 7,
+    } = args;
     const skip = (page - 1) * limit;
-    
+
+    const now = referenceDate ? new Date(referenceDate) : new Date();
+    const today = new Date(now);
+    today.setHours(0, 0, 0, 0);
+
+    const where: Prisma.ParkingSessionsWhereInput = { rateType };
+
+    if (vehicleType) {
+      where.vehicleType = vehicleType;
+    }
+
+    if (search && search.trim()) {
+      where.plateNumber = { contains: search.trim(), mode: 'insensitive' };
+    }
+
+    if (subscriptionStatus) {
+      const expiringEnd = new Date(today);
+      expiringEnd.setDate(expiringEnd.getDate() + expiringWindowDays);
+
+      const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+      const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+
+      switch (subscriptionStatus.toUpperCase()) {
+        case 'ACTIVE':
+          where.monthlyStart = { lte: today };
+          where.monthlyEnd = { gte: today };
+          break;
+        case 'EXPIRING':
+          where.monthlyEnd = { gte: today, lte: expiringEnd };
+          break;
+        case 'EXPIRED':
+          where.monthlyEnd = { lt: today };
+          break;
+        case 'NEW':
+          where.monthlyStart = { gte: monthStart, lt: monthEnd };
+          break;
+      }
+    }
+
     const [data, total] = await Promise.all([
       this.prisma.parkingSessions.findMany({
-        where: {
-          rateType: rateType,
-        },
+        where,
         take: limit,
-        skip: skip,
+        skip,
         orderBy: { createdAt: 'desc' },
       }),
-      this.prisma.parkingSessions.count(),
+      this.prisma.parkingSessions.count({ where }),
     ]);
 
     const totalPages = Math.ceil(total / limit);
@@ -141,6 +188,172 @@ export class ParkingSessionsService {
         hasNextPage: page < totalPages,
         hasPreviousPage: page > 1,
       }
+    };
+  }
+
+  async getMonthlySubscriptionAnalytics(
+    args: GetMonthlySubscriptionAnalyticsArgs,
+  ): Promise<MonthlySubscriptionAnalytics> {
+    const referenceDate = args.referenceDate ? new Date(args.referenceDate) : new Date();
+    const trendMonths = args.trendMonths ?? 6;
+    const expiringWindowDays = args.expiringWindowDays ?? 7;
+    const utilizationCapacity = args.capacity ?? 100;
+
+    const today = new Date(referenceDate);
+    today.setHours(0, 0, 0, 0);
+
+    const expiringEnd = new Date(today);
+    expiringEnd.setDate(expiringEnd.getDate() + expiringWindowDays);
+
+    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+    const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+    const prevMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    const prevMonthEnd = new Date(today.getFullYear(), today.getMonth(), 1);
+    const prevMonthLastDay = new Date(prevMonthEnd.getTime() - 1);
+
+    const baseWhere: Prisma.ParkingSessionsWhereInput = { rateType: RateType.MONTHLY };
+
+    const activeWhere: Prisma.ParkingSessionsWhereInput = {
+      ...baseWhere,
+      monthlyStart: { lte: today },
+      monthlyEnd: { gte: today },
+    };
+
+    const [
+      activeSubscribers,
+      expiringSoon,
+      expiredCount,
+      newThisMonth,
+      totalSubscriptions,
+      activeMrrAgg,
+      carsActive,
+      motorcyclesActive,
+      trucksActive,
+      previousMonthActive,
+      previousMonthNew,
+      activeRenewedFromPrevMonth,
+    ] = await Promise.all([
+      this.prisma.parkingSessions.count({ where: activeWhere }),
+      this.prisma.parkingSessions.count({
+        where: { ...baseWhere, monthlyEnd: { gte: today, lte: expiringEnd } },
+      }),
+      this.prisma.parkingSessions.count({
+        where: { ...baseWhere, monthlyEnd: { lt: today } },
+      }),
+      this.prisma.parkingSessions.count({
+        where: { ...baseWhere, monthlyStart: { gte: monthStart, lt: monthEnd } },
+      }),
+      this.prisma.parkingSessions.count({ where: baseWhere }),
+      this.prisma.parkingSessions.aggregate({
+        where: { ...activeWhere, parkingFee: { not: null } },
+        _sum: { parkingFee: true },
+      }),
+      this.prisma.parkingSessions.count({
+        where: { ...activeWhere, vehicleType: VehicleType.CAR },
+      }),
+      this.prisma.parkingSessions.count({
+        where: { ...activeWhere, vehicleType: VehicleType.MOTORCYCLE },
+      }),
+      this.prisma.parkingSessions.count({
+        where: { ...activeWhere, vehicleType: VehicleType.TRUCK },
+      }),
+      this.prisma.parkingSessions.count({
+        where: {
+          ...baseWhere,
+          monthlyStart: { lte: prevMonthLastDay },
+          monthlyEnd: { gte: prevMonthLastDay },
+        },
+      }),
+      this.prisma.parkingSessions.count({
+        where: { ...baseWhere, monthlyStart: { gte: prevMonthStart, lt: prevMonthEnd } },
+      }),
+      this.prisma.parkingSessions.count({
+        where: {
+          ...activeWhere,
+          monthlyStart: { lte: prevMonthLastDay, gte: prevMonthStart },
+        },
+      }),
+    ]);
+
+    const monthlyRecurringRevenue = activeMrrAgg._sum.parkingFee ?? 0;
+    const averageSubscriptionValue =
+      activeSubscribers > 0 ? monthlyRecurringRevenue / activeSubscribers : 0;
+    const growthRate =
+      previousMonthActive > 0
+        ? (activeSubscribers - previousMonthActive) / previousMonthActive
+        : 0;
+    const retentionRate =
+      previousMonthActive > 0 ? activeRenewedFromPrevMonth / previousMonthActive : 0;
+    const renewalRate = previousMonthNew > 0 ? newThisMonth / previousMonthNew : 0;
+    const utilizationRate =
+      utilizationCapacity > 0
+        ? Math.min(1, activeSubscribers / utilizationCapacity)
+        : 0;
+
+    const trend: MonthlySubscriptionTrendPoint[] = [];
+    for (let i = trendMonths - 1; i >= 0; i--) {
+      const ms = new Date(today.getFullYear(), today.getMonth() - i, 1);
+      const me = new Date(today.getFullYear(), today.getMonth() - i + 1, 1);
+      const meLastInstant = new Date(me.getTime() - 1);
+
+      const [tNew, tExpired, tActiveAtEnd, tRevAgg] = await Promise.all([
+        this.prisma.parkingSessions.count({
+          where: { ...baseWhere, monthlyStart: { gte: ms, lt: me } },
+        }),
+        this.prisma.parkingSessions.count({
+          where: { ...baseWhere, monthlyEnd: { gte: ms, lt: me } },
+        }),
+        this.prisma.parkingSessions.count({
+          where: {
+            ...baseWhere,
+            monthlyStart: { lte: meLastInstant },
+            monthlyEnd: { gte: meLastInstant },
+          },
+        }),
+        this.prisma.parkingSessions.aggregate({
+          where: {
+            ...baseWhere,
+            monthlyStart: { gte: ms, lt: me },
+            parkingFee: { not: null },
+          },
+          _sum: { parkingFee: true },
+        }),
+      ]);
+
+      const label = ms.toLocaleString('en-US', { month: 'short', year: '2-digit' });
+      const monthKey = `${ms.getFullYear()}-${String(ms.getMonth() + 1).padStart(2, '0')}`;
+
+      trend.push({
+        label,
+        monthKey,
+        newSubscribers: tNew,
+        expired: tExpired,
+        activeAtEnd: tActiveAtEnd,
+        recurringRevenue: tRevAgg._sum.parkingFee ?? 0,
+      });
+    }
+
+    return {
+      activeSubscribers,
+      expiringSoon,
+      expired: expiredCount,
+      newThisMonth,
+      totalSubscriptions,
+      monthlyRecurringRevenue,
+      growthRate,
+      retentionRate,
+      renewalRate,
+      previousMonthActive,
+      previousMonthNew,
+      averageSubscriptionValue,
+      utilizationCapacity,
+      utilizationRate,
+      vehicleBreakdown: {
+        cars: carsActive,
+        motorcycles: motorcyclesActive,
+        trucks: trucksActive,
+      },
+      trend,
     };
   }
 
