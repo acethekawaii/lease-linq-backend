@@ -12,6 +12,8 @@ import { VehicleStats } from './types/vehicle-stats.type';
 import { Prisma } from 'generated/prisma/client';
 import { ParkingBillingService } from './parking-billing.service';
 import { CreateMonthlySessionInput } from './input/create-monthly-session.input';
+import { UpdateMonthlySessionInput } from './input/update-monthly-session.input';
+import { UpdateParkingSessionInput } from './input/update-parking-session.input';
 import { GetMonthlySessionsArgs } from './args/get-monthly-sessions.args';
 import { GetMonthlyTransactionsArgs } from './args/get-monthly-transactions.args';
 import { GetMonthlySubscriptionAnalyticsArgs } from './args/get-monthly-subscription-analytics.args';
@@ -113,6 +115,79 @@ export class ParkingSessionsService {
     });
 
     return newSession;
+  }
+
+  async updateParkingSession(input: UpdateParkingSessionInput) {
+    const existing = await this.prisma.parkingSessions.findUnique({
+      where: { id: input.id },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Parking session not found');
+    }
+
+    const data: Prisma.ParkingSessionsUpdateInput = {};
+
+    if (input.plateNumber !== undefined) data.plateNumber = input.plateNumber;
+    if (input.enteredAt !== undefined) data.enteredAt = input.enteredAt;
+    if (input.exitedAt !== undefined) data.exitedAt = input.exitedAt;
+    if (input.parkingFee !== undefined) data.parkingFee = input.parkingFee;
+
+    const newEnteredAt = input.enteredAt ?? existing.enteredAt;
+    const newExitedAt = input.exitedAt ?? existing.exitedAt;
+
+    if (newEnteredAt && newExitedAt) {
+      data.durationMinutes = Math.ceil(
+        (newExitedAt.getTime() - newEnteredAt.getTime()) / 60000,
+      );
+    }
+
+    if (input.enteredAt !== undefined) {
+      const formatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Manila',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      });
+      data.occuranceDate = formatter.format(input.enteredAt);
+    }
+
+    return this.prisma.parkingSessions.update({
+      where: { id: input.id },
+      data,
+    });
+  }
+
+  async updateMonthlySession(input: UpdateMonthlySessionInput) {
+    const existing = await this.prisma.parkingSessions.findUnique({
+      where: { id: input.id },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Monthly session not found');
+    }
+
+    const data: Prisma.ParkingSessionsUpdateInput = {};
+
+    if (input.plateNumber !== undefined) data.plateNumber = input.plateNumber;
+    if (input.monthlyStart !== undefined) data.monthlyStart = input.monthlyStart;
+    if (input.monthlyEnd !== undefined) data.monthlyEnd = input.monthlyEnd;
+    if (input.parkingFee !== undefined) data.parkingFee = input.parkingFee;
+
+    if (input.monthlyStart !== undefined) {
+      const formatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Manila',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      });
+      data.occuranceDate = formatter.format(input.monthlyStart);
+    }
+
+    return this.prisma.parkingSessions.update({
+      where: { id: input.id },
+      data,
+    });
   }
 
   async getMonthlySessions(args: GetMonthlySessionsArgs): Promise<PaginatedParkingSessions> {

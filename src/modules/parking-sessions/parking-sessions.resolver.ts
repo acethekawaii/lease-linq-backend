@@ -1,5 +1,11 @@
 import { Args, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { UseGuards } from '@nestjs/common';
+
+import { GqlAuthGuard } from '../auth/guards/gql-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { Role } from '../auth/constants/role.enum';
 
 import { ParkingSessionsService } from './parking-sessions.service';
 import { ParkingSession } from './types/parking-session.type';
@@ -12,6 +18,8 @@ import { GetParkingStatistics } from './args/get-parking-statistics.args';
 import { VehicleStats } from './types/vehicle-stats.type';
 import { GetVehicleStatsArgs } from './args/get-vehicle-type.args';
 import { CreateMonthlySessionInput } from './input/create-monthly-session.input';
+import { UpdateMonthlySessionInput } from './input/update-monthly-session.input';
+import { UpdateParkingSessionInput } from './input/update-parking-session.input';
 import { GetMonthlySessionsArgs } from './args/get-monthly-sessions.args';
 import { GetMonthlyTransactionsArgs } from './args/get-monthly-transactions.args';
 import { GetMonthlySubscriptionAnalyticsArgs } from './args/get-monthly-subscription-analytics.args';
@@ -49,6 +57,24 @@ export class ParkingSessionsResolver {
     const session = await this.parkingSessionsService.createMonthlySession(input);
 
     return session;
+  }
+
+  @UseGuards(GqlAuthGuard, RolesGuard)
+  @Roles(Role.SUPERADMIN, Role.ADMIN)
+  @Mutation(() => ParkingSession, { name: 'updateMonthlySession' })
+  async updateMonthlySession(
+    @Args('input') input: UpdateMonthlySessionInput
+  ): Promise<ParkingSession> {
+    return this.parkingSessionsService.updateMonthlySession(input);
+  }
+
+  @UseGuards(GqlAuthGuard, RolesGuard)
+  @Roles(Role.SUPERADMIN, Role.ADMIN)
+  @Mutation(() => ParkingSession, { name: 'updateParkingSession' })
+  async updateParkingSession(
+    @Args('input') input: UpdateParkingSessionInput
+  ): Promise<ParkingSession> {
+    return this.parkingSessionsService.updateParkingSession(input);
   }
 
   @Query(() => PaginatedParkingSessions, { name: 'monthlySessions' })
