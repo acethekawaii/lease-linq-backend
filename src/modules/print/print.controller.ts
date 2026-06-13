@@ -41,6 +41,11 @@ export class PrintController {
     return this.printService.retryEntryReceipt(sessionId);
   }
 
+  @Get('status')
+  printerStatus() {
+    return this.printService.printerStatus();
+  }
+
   @Get('health')
   async printHealth() {
     return { status: 'health', timestamp: new Date().toISOString() };
